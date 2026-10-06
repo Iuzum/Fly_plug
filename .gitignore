@@ -1,0 +1,34 @@
+# Build
+core/build/
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Данные Hemibrain (большие)
+data/
+*.pkl
+*.h5
+*.bin
+
+# Логи
+*.log
+/tmp/
