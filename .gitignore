@@ -23,11 +23,17 @@ __pycache__/
 .venv/
 venv/
 
-# Данные Hemibrain (большие)
-data/
+# Данные Hemibrain — большие, НЕ коммитим
+data/hemibrain.pkl
 *.pkl
 *.h5
 *.bin
+
+# Но эти — коммитим (воспроизводимы, малы)
+!data/coarse_graph.json
+!data/selected_types.txt
+!data/selected_types.json
+!data/type_metrics.csv
 
 # Логи
 *.log
