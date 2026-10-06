@@ -1,23 +1,48 @@
+// main.cpp — тест загрузки SNN и первого шага симуляции.
+#include "fly/snn.hpp"
+#include "fly/motor.hpp"
+
 #include <iostream>
-#include <vector>
-#include <ranges>
 #include <string>
-#include <format>
 
 int main(int argc, char** argv) {
-    std::cout << "fly-server v0.1.0\n";
-    std::cout << "C++ standard: " << __cplusplus << "\n";
+    std::string graph_path = (argc > 1) ? argv[1] : "../data/coarse_graph.json";
 
-    std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    auto even = v | std::views::filter([](int n){ return n % 2 == 0; })
-                  | std::views::transform([](int n){ return n * n; });
+    std::cout << "fly-server v0.1.0 (SNN test)\n";
+    std::cout << "Загружаю: " << graph_path << "\n";
 
-    std::cout << "C++20 ranges: ";
-    for (int n : even) std::cout << n << " ";
-    std::cout << "\n";
+    fly::SNN snn;
+    try {
+        snn.load_from_json(graph_path);
+    } catch (const std::exception& e) {
+        std::cerr << "ОШИБКА: " << e.what() << "\n";
+        return 1;
+    }
 
-    std::string msg = std::format("fly-server ready, args={}", argc);
-    std::cout << msg << "\n";
+    std::cout << "SNN загружена:\n";
+    std::cout << "  нейронов: " << snn.size() << "\n";
+    std::cout << "  синапсов: " << snn.col_idx.size() << "\n";
 
+    // Ищем DN-нейроны
+    auto dn_ids = snn.find_all_by_prefix("DN");
+    std::cout << "  DN-нейронов: " << dn_ids.size() << "\n";
+    for (auto id : dn_ids) {
+        std::cout << "    [" << id << "] " << snn.types()[id] << "\n";
+    }
+
+    // Прогоняем 20 шагов симуляции без входа
+    std::cout << "\nСимуляция 20 шагов (dt=1ms), без входа:\n";
+    for (int t = 0; t < 20; ++t) {
+        snn.step(1.0f);
+
+        size_t n_spikes = 0;
+        for (bool s : snn.spikes()) if (s) n_spikes++;
+
+        if (n_spikes > 0 || t < 5) {
+            std::cout << "  шаг " << t << ": спайков " << n_spikes << "\n";
+        }
+    }
+
+    std::cout << "\nВсё ок. SNN работает.\n";
     return 0;
 }
