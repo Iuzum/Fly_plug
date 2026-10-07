@@ -1,7 +1,9 @@
 // snn.cpp — реализация SNN. Загрузка coarse_graph.json, шаг симуляции.
+// Нормализует raw weights из Hemibrain в разумный диапазон.
 #include "fly/snn.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <stdexcept>
 #include <nlohmann/json.hpp>
@@ -57,13 +59,35 @@ void SNN::load_from_json(const std::string& path) {
         cursor[to]++;
     }
 
+    // === НОРМАЛИЗАЦИЯ ВЕСОВ ===
+    // Нормализуем ПО MAX: максимальный вес -> WEIGHT_MAX.
+    // Это не сжимает слабые связи (в отличие от нормировки по mean).
+    if (S > 0) {
+        float w_max = 0.0f;
+        for (auto w : weights) w_max = std::max(w_max, std::abs(w));
+        if (w_max < 0.01f) w_max = 1.0f;
+
+        // Max синаптический вес -> 0.5 (разумно для LIF с порогом 0.5)
+        // Один сильный синапс -> половина порога. Много -> спайк.
+        constexpr float WEIGHT_MAX = 0.5f;
+        float scale = WEIGHT_MAX / w_max;
+
+        for (auto& w : weights) w *= scale;
+
+        float w_min_after = *std::min_element(weights.begin(), weights.end());
+        float w_max_after = *std::max_element(weights.begin(), weights.end());
+        std::printf("SNN weight normalization: max_before=%.0f, scale=%.8f, "
+                    "range_after=[%.6f, %.4f]\n",
+                    w_max, scale, w_min_after, w_max_after);
+    }
+
     // --- Инициализация нейронов ---
     neurons.resize(N);
     for (auto& n : neurons) {
         n.v = n.v_rest;
         n.tau_m = 20.0f;
         n.tau_ref = 2.0f;
-        n.v_thresh = 1.0f;
+        n.v_thresh = 0.5f;
         n.v_reset = 0.0f;
     }
 
@@ -72,22 +96,15 @@ void SNN::load_from_json(const std::string& path) {
     spike_buffer.assign(N, false);
     prev_spikes.assign(N, false);
     sim_time = 0.0f;
-
-    // --- Статистика ---
-    // Средняя входящая степень
-    float avg_deg_in = static_cast<float>(S) / static_cast<float>(N);
-    (void)avg_deg_in;
 }
 
 void SNN::step(float dt_ms) {
-    // Сдвигаем спайки
     prev_spikes = spike_buffer;
     std::fill(spike_buffer.begin(), spike_buffer.end(), false);
 
     const size_t N = neurons.size();
 
-    // 1) Собираем синаптические токи от предыдущих спайков
-    //    Входные токи (input_current) уже содержат внешний вклад (сенсоры).
+    // 1) Синаптические токи от предыдущих спайков
     for (size_t i = 0; i < N; ++i) {
         float syn = 0.0f;
         for (uint32_t k = row_ptr[i]; k < row_ptr[i + 1]; ++k) {
@@ -98,7 +115,7 @@ void SNN::step(float dt_ms) {
         input_current[i] += syn;
     }
 
-    // 2) Обновляем нейроны
+    // 2) Обновление нейронов
     for (size_t i = 0; i < N; ++i) {
         LIFNeuron& n = neurons[i];
 
@@ -109,7 +126,6 @@ void SNN::step(float dt_ms) {
             continue;
         }
 
-        // LIF: tau_m * dv/dt = -(v - v_rest) + I
         float dv = (-(n.v - n.v_rest) + input_current[i]) / n.tau_m;
         n.v += dv * dt_ms;
 
@@ -124,10 +140,10 @@ void SNN::step(float dt_ms) {
         }
     }
 
-    // 3) Сбрасываем входные токи на следующий шаг
+    // 3) Сброс токов
     std::fill(input_current.begin(), input_current.end(), 0.0f);
 
-    // 4) Продвигаем время
+    // 4) Время
     sim_time += dt_ms;
 }
 

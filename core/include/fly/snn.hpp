@@ -12,7 +12,7 @@ namespace fly {
 struct LIFNeuron {
     float v = 0.0f;             // мембранный потенциал
     float v_rest = 0.0f;        // потенциал покоя
-    float v_thresh = 1.0f;      // порог спайка
+    float v_thresh = 0.5f;      // порог спайка
     float v_reset = 0.0f;       // после спайка
     float tau_m = 20.0f;        // время релаксации, мс
     float tau_ref = 2.0f;       // рефрактерный период, мс

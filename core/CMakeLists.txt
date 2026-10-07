@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# ВАЖНО: компилятор задаётся ДО project(),
-# иначе cmake проигнорирует set() и зациклится на "cache delete".
+# Компилятор — ДО project(), иначе цикл "cache delete".
 if(APPLE)
     set(CMAKE_C_COMPILER   "/opt/homebrew/opt/llvm/bin/clang"   CACHE FILEPATH "")
     set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++" CACHE FILEPATH "")
@@ -17,7 +16,7 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math")
 endif()
 
-# --- nlohmann/json через FetchContent ---
+# --- nlohmann/json ---
 include(FetchContent)
 FetchContent_Declare(
     nlohmann_json
@@ -29,6 +28,8 @@ FetchContent_MakeAvailable(nlohmann_json)
 # --- Ядро ---
 add_library(fly_core STATIC
     src/snn.cpp
+    src/sensor.cpp
+    src/motor.cpp
     src/mushroom.cpp
     src/core.cpp
 )
